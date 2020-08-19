@@ -12,14 +12,15 @@ from skimage import img_as_ubyte
 import torch
 from sync_batchnorm import DataParallelWithCallback
 
-from modules.generator import OcclusionAwareGenerator
-from modules.keypoint_detector import KPDetector
-from animate import normalize_kp
+from alterego.generator import OcclusionAwareGenerator
+from alterego.keypoint_detector import KPDetector
+from alterego.animate import normalize_kp
 from scipy.spatial import ConvexHull
 
 
 if sys.version_info[0] < 3:
     raise Exception("You must use Python 3 or higher. Recommended version is Python 3.7")
+
 
 def load_checkpoints(config_path, checkpoint_path, cpu=False):
 
@@ -35,22 +36,22 @@ def load_checkpoints(config_path, checkpoint_path, cpu=False):
                              **config['model_params']['common_params'])
     if not cpu:
         kp_detector.cuda()
-    
+
     if cpu:
         checkpoint = torch.load(checkpoint_path, map_location=torch.device('cpu'))
     else:
         checkpoint = torch.load(checkpoint_path)
- 
+
     generator.load_state_dict(checkpoint['generator'])
     kp_detector.load_state_dict(checkpoint['kp_detector'])
-    
+
     if not cpu:
         generator = DataParallelWithCallback(generator)
         kp_detector = DataParallelWithCallback(kp_detector)
 
     generator.eval()
     kp_detector.eval()
-    
+
     return generator, kp_detector
 
 
@@ -102,6 +103,26 @@ def find_best_frame(source, driving, cpu=False):
             frame_num = i
     return frame_num
 
+
+def generate_animation(model_path:str, img_path: str, video_path: str, new_video_name: str) -> None:
+
+    generator, kp_detector = load_checkpoints(config_path='config/vox-256.yaml',
+                                checkpoint_path=model_path)
+
+    scale = 256
+
+    source_image = imageio.imread(img_path)
+    driving_video = imageio.mimread(video_path, memtest="4GB")
+
+    source_image = resize(source_image, (scale, scale))[..., :3]
+    driving_video = [resize(frame, (scale, scale))[..., :3] for frame in driving_video]
+
+    predictions = make_animation(source_image, driving_video, generator, kp_detector, relative=True)
+
+    #save resulting video
+    imageio.mimsave('content/{}.mp4'.format(new_video_name), [img_as_ubyte(frame) for frame in predictions])
+
+
 if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("--config", required=True, help="path to config")
@@ -110,18 +131,18 @@ if __name__ == "__main__":
     parser.add_argument("--source_image", default='sup-mat/source.png', help="path to source image")
     parser.add_argument("--driving_video", default='sup-mat/source.png', help="path to driving video")
     parser.add_argument("--result_video", default='result.mp4', help="path to output")
- 
+
     parser.add_argument("--relative", dest="relative", action="store_true", help="use relative or absolute keypoint coordinates")
     parser.add_argument("--adapt_scale", dest="adapt_scale", action="store_true", help="adapt movement scale based on convex hull of keypoints")
 
-    parser.add_argument("--find_best_frame", dest="find_best_frame", action="store_true", 
+    parser.add_argument("--find_best_frame", dest="find_best_frame", action="store_true",
                         help="Generate from the frame that is the most alligned with source. (Only for faces, requires face_aligment lib)")
 
-    parser.add_argument("--best_frame", dest="best_frame", type=int, default=None,  
+    parser.add_argument("--best_frame", dest="best_frame", type=int, default=None,
                         help="Set frame to start from.")
- 
+
     parser.add_argument("--cpu", dest="cpu", action="store_true", help="cpu mode.")
- 
+
 
     parser.set_defaults(relative=False)
     parser.set_defaults(adapt_scale=False)

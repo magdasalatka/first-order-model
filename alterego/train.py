@@ -3,14 +3,14 @@ import torch
 
 from torch.utils.data import DataLoader
 
-from logger import Logger
-from modules.model import GeneratorFullModel, DiscriminatorFullModel
+from alterego.logger import Logger
+from alterego.model import GeneratorFullModel, DiscriminatorFullModel
 
 from torch.optim.lr_scheduler import MultiStepLR
 
 from sync_batchnorm import DataParallelWithCallback
 
-from frames_dataset import DatasetRepeater
+from alterego.frames_dataset import DatasetRepeater
 
 
 def train(config, generator, discriminator, kp_detector, checkpoint, log_dir, dataset, device_ids):
@@ -78,7 +78,7 @@ def train(config, generator, discriminator, kp_detector, checkpoint, log_dir, da
             scheduler_generator.step()
             scheduler_discriminator.step()
             scheduler_kp_detector.step()
-            
+
             logger.log_epoch(epoch, {'generator': generator,
                                      'discriminator': discriminator,
                                      'kp_detector': kp_detector,

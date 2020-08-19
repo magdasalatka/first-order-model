@@ -4,8 +4,8 @@ from tqdm import tqdm
 import torch
 from torch.utils.data import DataLoader
 
-from frames_dataset import PairedDataset
-from logger import Logger, Visualizer
+from alterego.frames_dataset import PairedDataset
+from alterego.logger import Logger, Visualizer
 import imageio
 from scipy.spatial import ConvexHull
 import numpy as np
