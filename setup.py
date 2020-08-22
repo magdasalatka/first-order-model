@@ -18,6 +18,7 @@ setup(
         "PyYAML",
         "scipy",
         "tqdm",
+        "scikit-image",
+        "scikit-learn",
     ],
 )
-

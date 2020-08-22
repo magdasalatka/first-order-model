@@ -23,10 +23,13 @@ if sys.version_info[0] < 3:
 
 
 def load_checkpoints(config_path, checkpoint_path, cpu=False):
+    with open(config_path) as conf_fd:
+        config = yaml.load(conf_fd)
+        with open(checkpoint_path) as checkp_fd:
+            return load_checkpoints_from_streams(config, checkp_fd, cpu)
 
-    with open(config_path) as f:
-        config = yaml.load(f)
 
+def load_checkpoints_from_streams(config, checkpoint_stream, cpu=False):
     generator = OcclusionAwareGenerator(**config['model_params']['generator_params'],
                                         **config['model_params']['common_params'])
     if not cpu:
@@ -38,9 +41,9 @@ def load_checkpoints(config_path, checkpoint_path, cpu=False):
         kp_detector.cuda()
 
     if cpu:
-        checkpoint = torch.load(checkpoint_path, map_location=torch.device('cpu'))
+        checkpoint = torch.load(checkpoint_stream, map_location=torch.device('cpu'))
     else:
-        checkpoint = torch.load(checkpoint_path)
+        checkpoint = torch.load(checkpoint_stream)
 
     generator.load_state_dict(checkpoint['generator'])
     kp_detector.load_state_dict(checkpoint['kp_detector'])
@@ -175,4 +178,3 @@ if __name__ == "__main__":
     else:
         predictions = make_animation(source_image, driving_video, generator, kp_detector, relative=opt.relative, adapt_movement_scale=opt.adapt_scale, cpu=opt.cpu)
     imageio.mimsave(opt.result_video, [img_as_ubyte(frame) for frame in predictions], fps=fps)
-
